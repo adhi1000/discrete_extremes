@@ -19,59 +19,6 @@ print_loading = function(it,it.max,step=2/100,newline=F){
   }
 }
 
-# Create a quantile-quantile plot 
-# input:
-# - data: observations
-# - q.fct: a quantile function
-# - only quantiles corresponding to probabilites between pmin and pmax are plotted
-# - only a percentage (prop) of the observations will be used between a and b to avoid producing heavy images
-
-QQplot.old2 = function(data,q.fct,pmin=0,pmax=1,a=0,b=0,prop=1,ci=F,xlab="exp. quantile",ylab="th. quantile",
-                  type=1,alpha=0.95,log=F,B){
-  l = function(x){
-    if(log){
-      return(log(x))
-    } else {
-      return(x)
-    }
-  }
-  
-  n=length(data)
-  t=seq(1,n)/(n+1) 
-  if(prop<1){
-    w = (t<a) | (t>b)
-    s = sample.int(length(w[w==F]),round(prop*length(w[w==F])))
-    t = c(t[w],t[w==F][s])
-  }
-  t=t[t>=pmin]
-  t=t[t<=pmax]
-  q.exp = quantile(data,t,type=type) 
-  q.th = sapply(t,q.fct)
-  plot(l(q.exp),l(q.th),xlab=xlab,ylab=ylab)
-  abline(0,1)
-  
-  
-  if(ci){ # plot confidence interval
-    # simulate from the model B times
-    # at each iteration, compute quantiles at points t and save the vector in a row of mat
-    # compute confidence interval for each quantile, using the columns of mat
-    mat = matrix(NA,B,length(t)) 
-    for(i in 1:B){
-       x.sim = q.fct(runif(n))
-       q.sim = quantile(x.sim,t,type=type) 
-      mat[i,] = q.sim
-    }
-    stopifnot(sum(is.na(mat))==0)
-    q.u = apply(mat,2,function(x) quantile(x,1-(1-alpha)/2))
-    q.l = apply(mat,2,function(x) quantile(x,(1-alpha)/2))
-    
-    ind.u = sort.int(q.u, index.return=TRUE)$ix 
-    ind.l = sort.int(q.l, index.return=TRUE)$ix
-    lines(l(q.u[ind.u]),l(q.th[ind.u]))
-    lines(l(q.l[ind.l]),l(q.th[ind.l]))
-  }
-}
-
 
 # BIC 
 bic = function(nllh,nbr.par,nbr.obs) nbr.par*log(nbr.obs)+2*nllh
@@ -180,11 +127,19 @@ stopifnot(round(log(d.gpd(30,0,5,6))-log.d.gpd(30,0,5,6),6)==0)
 
 # quantile
 q.gpd = function(x,xi,si,mu=0){
+  r = rep(NA,length(x))
+  is.in.range = x<=1 & x>=0
+  r[is.in.range] = (1/xi)*si*((1-x[is.in.range])^(-xi)-1)+mu
+ return(r)
+}
+if(F){ # depreciated
+q.gpd = function(x,xi,si,mu=0){
   if(x>1 || x<0){
     return(NA)
   } else{
     return((1/xi)*si*((1-x)^(-xi)-1)+mu)
   }
+}
 }
 stopifnot(round(p.gpd(q.gpd(0.4,2.1,1.1,4),2.1,1.1,4),6)==0.4)
 
@@ -345,8 +300,6 @@ stopifnot(round(pm.gzm.un(0.2,3,2)/pm.gzm.norm(3,2)-pm.gzm(0.2,3,2),6)==0)
 stopifnot(round(pm.gzm.un(0.2,-0.3,5)/pm.gzm.norm(-0.3,5)-pm.gzm(0.2,-0.3,5),6)==0)
 
 
-
-
 # continuous Zipf-Mandelbrot distribution
 # extend zm to a continuous distribution czm with rv Y s.t. floor(Y) = X is zm
 # remark: pr(Y<=k)=pr(X<=k-1)
@@ -364,13 +317,6 @@ stopifnot(round(p.cgzm(q.cgzm(0.4,2.1,1.1),2.1,1.1)-0.4,4)==0)
 stopifnot(round(p.cgzm(q.cgzm(0.9999,4.1,3.1),4.1,3.1)-0.9999,6)==0)
 }
 
-#p.czm = function(x,s,q) ifelse(x>=0, 1-gsl::hzeta(s,x+q)/gsl::hzeta(s,q), 0)
-#q.czm = function(x,s,q,upper=99999) uniroot( function(y) p.czm(y,s=s,q=q)-x, interval=c(0,upper))$root
-#stopifnot(round(p.czm(q.czm(0.4,2.1,1.1),2.1,1.1)-0.4,4)==0) 
-#stopifnot(round(p.czm(q.czm(0.9999,4.1,3.1),4.1,3.1)-0.9999,6)==0)
-
-
-
 # Gradient of probability of an Hurwitz Zeta to be >= x
 # w.r.t. (s,q)
 get.grad.sprob.zm = function(x,pu,s,q){
@@ -386,14 +332,57 @@ xi.sim=0.5;si.sim=0.3
 plot(sapply(v,pm.gzm,si=si.sim,xi=xi.sim),sapply(v,pm.dgpd,si=si.sim,xi=xi.sim));abline(0,1)
 }
      
-if(F){
-# TODO # compare with following (used in simulations)
-f =  function(par) get.return.level(alpha=p.target,u=u,pu=pu,q.exceed.dist= function(x) q.czm(x,s=1+1/par[1],q=par[2]/par[1],upper=max(s)*100))
-grad.rl = try(numDeriv::grad(func=f,x=o$par),silent=T)
-if(is.character(grad.rl)){
-  rl.pm = NA
-} else {
-  var.rl = grad.rl %*% solve(o$hessian) %*% grad.rl
-  rl.pm = from.var.to.ci(par=rl, var=var.rl, alpha=alpha,pm=T)
-}
+
+
+# Create a quantile-quantile plot 
+# input:
+# - data: observations
+# - q.fct: a quantile function
+# - only quantiles corresponding to probabilites between pmin and pmax are plotted
+# - only a percentage (prop) of the observations will be used between a and b to avoid producing heavy images
+
+QQplot.old2 = function(data,q.fct,pmin=0,pmax=1,a=0,b=0,prop=1,ci=F,xlab="exp. quantile",ylab="th. quantile",
+                       type=1,alpha=0.95,log=F,B){
+  l = function(x){
+    if(log){
+      return(log(x))
+    } else {
+      return(x)
+    }
+  }
+  
+  n=length(data)
+  t=seq(1,n)/(n+1) 
+  if(prop<1){
+    w = (t<a) | (t>b)
+    s = sample.int(length(w[w==F]),round(prop*length(w[w==F])))
+    t = c(t[w],t[w==F][s])
+  }
+  t=t[t>=pmin]
+  t=t[t<=pmax]
+  q.exp = quantile(data,t,type=type) 
+  q.th = sapply(t,q.fct)
+  plot(l(q.exp),l(q.th),xlab=xlab,ylab=ylab)
+  abline(0,1)
+  
+  
+  if(ci){ # plot confidence interval
+    # simulate from the model B times
+    # at each iteration, compute quantiles at points t and save the vector in a row of mat
+    # compute confidence interval for each quantile, using the columns of mat
+    mat = matrix(NA,B,length(t)) 
+    for(i in 1:B){
+      x.sim = q.fct(runif(n))
+      q.sim = quantile(x.sim,t,type=type) 
+      mat[i,] = q.sim
+    }
+    stopifnot(sum(is.na(mat))==0)
+    q.u = apply(mat,2,function(x) quantile(x,1-(1-alpha)/2))
+    q.l = apply(mat,2,function(x) quantile(x,(1-alpha)/2))
+    
+    ind.u = sort.int(q.u, index.return=TRUE)$ix 
+    ind.l = sort.int(q.l, index.return=TRUE)$ix
+    lines(l(q.u[ind.u]),l(q.th[ind.u]))
+    lines(l(q.l[ind.l]),l(q.th[ind.l]))
+  }
 }

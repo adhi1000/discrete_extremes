@@ -136,7 +136,7 @@ for(name in models) par[[name]] = list(NA) # initialization
 # number of tied observations with less than 20 ties
 round(sum(t[t<=20])/sum(t),3)
 
-pdf(file=paste0("images/","torn","_plotTable.pdf"),pointsize=pointsize,width=7,height=7)
+pdf(file=paste0("images/","torn","_Figure_2.pdf"),pointsize=pointsize,width=7,height=7)
 par(pty="s")
 plot(table(data[data>=u]),xlab="Number of extreme tornadoes per outbreak",ylab="Frequency",xaxt="n")
 axis(side = 1, at = c(1,10,100,180))
@@ -624,6 +624,9 @@ for(name in models.qqplot){
 
 # =======
 # EXPORT RESUlTS IN A LATEX TABLE
+
+# Table 2 (second part)
+cat("Table 2 (second part) in Discrete Extremes: \n")
 
 # print fixed number of decimals
 prt.rd = function(x,rd) sprintf(paste0("%.",as.character(rd),"f"),x)

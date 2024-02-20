@@ -129,7 +129,7 @@ if(experiment == 15){
 # Plot frequency table
 
 if(lang=="eng"){
-  pdf(file=paste0("images/",lang,"_",dataset,"_plotTable.pdf"),pointsize=pointsize,width=7,height=7)
+  pdf(file=paste0("images/",lang,"_",dataset,"_figure_1_right.pdf"),pointsize=pointsize,width=7,height=7)
   par(pty="s")
   plot(table(data[data>=u]),xlab="Word Frequency",ylab="Frequency",log="x",xlog=T,xaxt="n")
   axis(side = 1, at = c(1,10,100,1000,10000))
@@ -137,7 +137,9 @@ if(lang=="eng"){
 }
 
 if(experiment =="15"){
-  pdf(file=paste0("images/",lang,"_",dataset,"_plotTable.pdf"),pointsize=pointsize,width=7,height=7)
+  article.table.reference = "_plotTable"
+  if(lang=="fr" & dataset=="X15") article.table.reference = "_Figure_1_right"
+  pdf(file=paste0("images/",lang,"_",dataset,article.table.reference,".pdf"),pointsize=pointsize,width=7,height=7)
   par(pty="s")
   plot(table(data[data>=u]),xlab="Word length frequency",ylab="Frequency",xaxt="n")
   axis(side = 1, at = pretty(as.numeric(names(table(data[data>=u])))))
@@ -183,7 +185,7 @@ if(any(name==models)){
   ks[[name]] = dgof::ks.test(x=s,y=stepFun[[name]],alternative="two.sided",simulate.p.value=F)$p.value # Kolgomorov Smirnov test
   if(sim.pvalue) ks.sim[[name]] = dgof::ks.test(x=s,y=stepFun[[name]],alternative="two.sided",simulate.p.value=T,B=B.sim)$p.value # Kolgomorov Smirnov test
   
-
+  
   if(Clauset){ # KS: Method of A. Clauset and C. R. Shalizi and M. E. J. Newman
     
     B.Clauset=100
@@ -194,17 +196,17 @@ if(any(name==models)){
     
     for(j in 1:B.Clauset){
       print_loading(it=j,it.max=B.Clauset)
-        # simulate from fitted model
-        x.sub = r.dgpd(length(s),xi=o$par[1],si=o$par[2])
-        t.sub = table(x.sub)
-        
-        nll.sub = function(par) -sum(log(sapply(as.numeric(names(t.sub)),pm.dgpd,xi=par[1],si=par[2]))*t.sub) 
-        o.sub = optim(par=c(1,1),fn=nll.sub,hessian=T)  
-        
-        stepFunClauset = from.pdist.to.stepfun(pdist=function(x) p.dgpd(x,xi=o.sub$par[1],si=o.sub$par[2]),a=0,b=max(x.sub)+1)
-        v[j] =dgof::ks.test(x=x.sub,y=stepFunClauset,alternative="two.sided",simulate.p.value=simulated.p.value, B=B.sim)$p.value # Kolgomorov Smirnov test
-      }
-      ks.clauset[[name]] = sum(ks.bench>=v)/length(v)
+      # simulate from fitted model
+      x.sub = r.dgpd(length(s),xi=o$par[1],si=o$par[2])
+      t.sub = table(x.sub)
+      
+      nll.sub = function(par) -sum(log(sapply(as.numeric(names(t.sub)),pm.dgpd,xi=par[1],si=par[2]))*t.sub) 
+      o.sub = optim(par=c(1,1),fn=nll.sub,hessian=T)  
+      
+      stepFunClauset = from.pdist.to.stepfun(pdist=function(x) p.dgpd(x,xi=o.sub$par[1],si=o.sub$par[2]),a=0,b=max(x.sub)+1)
+      v[j] =dgof::ks.test(x=x.sub,y=stepFunClauset,alternative="two.sided",simulate.p.value=simulated.p.value, B=B.sim)$p.value # Kolgomorov Smirnov test
+    }
+    ks.clauset[[name]] = sum(ks.bench>=v)/length(v)
   }
   
   
@@ -285,7 +287,7 @@ if(any(name==models)){
   ks[[name]] = dgof::ks.test(x=s,y=stepFun[[name]],alternative="two.sided",simulate.p.value=F)$p.value # Kolgomorov Smirnov test
   if(sim.pvalue) ks.sim[[name]] = dgof::ks.test(x=s,y=stepFun[[name]],alternative="two.sided",simulate.p.value=T,B=B.sim)$p.value # Kolgomorov Smirnov test
   
-
+  
   
   #pdf(file=paste0("images/qqplot_",lang,"_",dataset,"_",name,".pdf"),pointsize=pointsize,width=7,height=7)
   #par(pty="s")
@@ -367,6 +369,7 @@ if(any(name==models)){
 # =======
 # EXPORT RESUlTS IN A LATEX TABLE
 
+
 # print fixed number of decimals
 prt.rd = function(x,rd) sprintf(paste0("%.",as.character(rd),"f"),x)
 # build confidence intervals in latex
@@ -382,7 +385,7 @@ if(experiment==15) txt = paste(txt,"French", "& & & & \\\\ \n")
 
 
 for(name in models){
-  if(is.na(par[[name]])==F){
+  if(all(!is.na(par[[name]]))){
     txt = paste(txt, latexName[[name]], "& $",
                 prt.rd(ks[[name]],rd=2), "$ & $", 
                 prt.rd(val[[name]],rd=1), "$ &", 
@@ -403,7 +406,7 @@ if(ks.bootstrap){ # Compute KS test for bootstrap
     
     for(name in models){
       if(is.null(stepFun[[name]])==F){
-      ks.boot[[name]][j] = dgof::ks.test(x=s.sub,y=stepFun[[name]],alternative="two.sided",simulate.p.value=simulated.p.value, B=B.sim)$p.value # Kolgomorov Smirnov test
+        ks.boot[[name]][j] = dgof::ks.test(x=s.sub,y=stepFun[[name]],alternative="two.sided",simulate.p.value=simulated.p.value, B=B.sim)$p.value # Kolgomorov Smirnov test
       }
     }
   }
@@ -414,17 +417,19 @@ for(name in models){
 }
 unlist(ks.boot.m)
 
-
-cat(txt)
-cat(paste0("Threshold = ",u,", quantile:",qt,", size of exceed. = ",length(s)),", size init data = ",length(data),"\n")
-
-round(unlist(val),2)
-round(unlist(ks),2)
-round(unlist(ks.sim),2)
-round(unlist(ks.boot.m),2)
-
-# compute BIC
-round(sapply(unlist(val),bic,nbr.par=2,nbr.obs=sum(t)),1)
-
-
+# Table 2 (first part)
+cat("Table 2 (first part) in Discrete Extremes: \n")
+if(T){
+  cat(txt)
+  cat(paste0("Threshold = ",u,", quantile:",qt,", size of exceed. = ",length(s)),", size init data = ",length(data),"\n")
+  
+  round(unlist(val),2)
+  round(unlist(ks),2)
+  round(unlist(ks.sim),2)
+  print(round(unlist(ks.boot.m),2))
+  
+  # compute BIC
+  round(sapply(unlist(val),bic,nbr.par=2,nbr.obs=sum(t)),1)
+  
+}
 

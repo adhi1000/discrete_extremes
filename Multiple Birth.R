@@ -425,6 +425,8 @@ mean(nbr.exced)
 mean(nbr.4)
 mean(nbr.5)
 
+# Table 3
+cat("Table 3 in Discrete Extremes: \n")
 pe.m = coverage = len = true.len = nbr.na = nbr.na.ci = list(NA)
 pe.true 
 for(name in name.list){

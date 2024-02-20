@@ -201,7 +201,9 @@ for(mda in mda.list){
         
         
         if(do.pdf){
-            pdf(file=paste0("images/","freqTable","_",mda,".pdf"),pointsize=pointsize,width=7,height=7)
+            article.table.reference = ""
+            if(mda=="fre") article.table.reference = "_Figure_1_left"
+            pdf(file=paste0("images/","freqTable","_",mda,article.table.reference,".pdf"),pointsize=pointsize,width=7,height=7)
             par(pty="s")
             plot(t,ylab="Frequency",xlab="Simulated observations",xaxt = "n")
             axis(side = 1, at = pretty(as.numeric(names(t))))
@@ -876,6 +878,8 @@ for(mda in mda.list){
     
     # =============
     # Create latex tabular 
+    # Table 1
+    cat("Table 1 in Discrete Extremes: \n")
     
     # Header
     text = ""
